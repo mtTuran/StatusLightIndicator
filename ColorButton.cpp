@@ -9,6 +9,11 @@ void ColorButton::init_pin() {
   pinMode(this->pin, INPUT_PULLUP);
 }
 
-Color ColorButton::pressed() {
+bool ColorButton::is_pressed() {
+  if (digitalRead(this->pin) == LOW) return true;
+  else return false;
+}
+
+Color ColorButton::get_color() {
   return this->color;
 }

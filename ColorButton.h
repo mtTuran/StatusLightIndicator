@@ -13,7 +13,9 @@ class ColorButton {
     
     void init_pin();
 
-    Color pressed();
+    bool is_pressed();
+
+    Color get_color();
 };
 
 #endif

@@ -4,7 +4,7 @@ Led::Led(byte red_pin, byte green_pin, byte blue_pin) {
   this->red_pin = red_pin;
   this->green_pin = green_pin;
   this->blue_pin = blue_pin;
-  Color curr_color = {0, 0, 0};
+  this->curr_color = {0, 0, 0};
 }
 
 void Led::write_led() {
