@@ -3,15 +3,23 @@
 #include "Led.h"
 #include "ColorButton.h"
 
-void IRAM_ATTR readEncoderISR();
-void rotary_loop();
+void IRAM_ATTR readChoiceEncoderISR();
+void IRAM_ATTR readIncrementEncoderISR();
+void choice_encoder_loop();
+void increment_encoder_loop();
 void color_selection_service();
 
-#define ROTARY_ENCODER_A_PIN 5
-#define ROTARY_ENCODER_B_PIN 17
+#define CHOICE_ENCODER_A_PIN 5
+#define CHOICE_ENCODER_B_PIN 17
+#define INCREMENT_ENCODER_A_PIN 16
+#define INCREMENT_ENCODER_B_PIN 4
 #define ROTARY_ENCODER_BUTTON_PIN -1
 #define ROTARY_ENCODER_VCC_PIN -1
 #define ROTARY_ENCODER_STEPS 4
+
+long hours = 0;
+long minutes = 0;
+long incrementer_selection = 1;
 
 const Color RED = {255, 0, 0};
 const Color ORANGE = {230, 200, 0};
@@ -28,7 +36,8 @@ ColorButton red_bt(18, RED);
 ColorButton orange_bt(32, ORANGE);
 ColorButton yellow_bt(33, YELLOW);
 ColorButton green_bt(25, GREEN);
-AiEsp32RotaryEncoder rotaryEncoder = AiEsp32RotaryEncoder(ROTARY_ENCODER_A_PIN, ROTARY_ENCODER_B_PIN, ROTARY_ENCODER_BUTTON_PIN, ROTARY_ENCODER_VCC_PIN, ROTARY_ENCODER_STEPS);
+AiEsp32RotaryEncoder choice_encoder = AiEsp32RotaryEncoder(CHOICE_ENCODER_A_PIN, CHOICE_ENCODER_B_PIN, ROTARY_ENCODER_BUTTON_PIN, ROTARY_ENCODER_VCC_PIN, ROTARY_ENCODER_STEPS);
+AiEsp32RotaryEncoder increment_encoder = AiEsp32RotaryEncoder(INCREMENT_ENCODER_A_PIN, INCREMENT_ENCODER_B_PIN, ROTARY_ENCODER_BUTTON_PIN, ROTARY_ENCODER_VCC_PIN, ROTARY_ENCODER_STEPS);
 
 //************************************** (main) setup - loop **************************************
 void setup() {
@@ -40,34 +49,62 @@ void setup() {
   yellow_bt.init_pin();
   green_bt.init_pin();
 
-  rotaryEncoder.begin();
-	rotaryEncoder.setup(readEncoderISR);
-	rotaryEncoder.setBoundaries(0, 59, true); // true means values form a circle
-  rotaryEncoder.disableAcceleration();
+  choice_encoder.begin();
+	choice_encoder.setup(readChoiceEncoderISR);
+	choice_encoder.setBoundaries(0, 1, false); // true means values form a circle
+  choice_encoder.disableAcceleration();
+  choice_encoder.setEncoderValue(incrementer_selection);
+
+  increment_encoder.begin();
+	increment_encoder.setup(readIncrementEncoderISR);
+	increment_encoder.setBoundaries(0, 59, true);
+  increment_encoder.disableAcceleration();
+  increment_encoder.setEncoderValue(minutes);
 
   Serial.begin(115200);
 }
 
 void loop() {  
   color_selection_service();
-  rotary_loop();
+  choice_encoder_loop();
+  increment_encoder_loop();
   delay(10);  
 }
 
 //************************************** function definitions **************************************
-void IRAM_ATTR readEncoderISR()
-{
-	rotaryEncoder.readEncoder_ISR();
+void IRAM_ATTR readChoiceEncoderISR() {
+	choice_encoder.readEncoder_ISR();
 }
 
-void rotary_loop()
-{
-	//dont print anything unless value changed
-	if (rotaryEncoder.encoderChanged())
-	{
-		Serial.print("Value: ");
-		Serial.println(rotaryEncoder.readEncoder());
+void IRAM_ATTR readIncrementEncoderISR() {
+	increment_encoder.readEncoder_ISR();
+}
+
+void choice_encoder_loop() {
+	if (choice_encoder.encoderChanged()) {
+    incrementer_selection = choice_encoder.readEncoder();
+		Serial.print("Choice Value: ");
+		Serial.println(incrementer_selection);
+    if (incrementer_selection == 1) {
+      increment_encoder.setBoundaries(0, 59, true);
+      increment_encoder.setEncoderValue(minutes);
+    }
+    else {
+      increment_encoder.setBoundaries(0, 120, true);
+      increment_encoder.setEncoderValue(hours);
+    }
 	}
+}
+
+void increment_encoder_loop() {
+  if (increment_encoder.encoderChanged()) {
+    if (incrementer_selection == 1) minutes = increment_encoder.readEncoder();
+    else hours = increment_encoder.readEncoder();
+    Serial.print("Hour - Minutes: ");
+    Serial.print(hours);
+    Serial.print(" - ");
+    Serial.println(minutes);
+  }
 }
 
 void color_selection_service() {
