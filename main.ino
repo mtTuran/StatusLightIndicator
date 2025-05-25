@@ -29,9 +29,32 @@ void setup() {
 }
 
 void loop() {  
-  if (red_bt.is_pressed()) led.switch_colors(red_bt.get_color());
-  else if (orange_bt.is_pressed()) led.switch_colors(orange_bt.get_color());
-  else if (yellow_bt.is_pressed()) led.switch_colors(yellow_bt.get_color());
-  else if (green_bt.is_pressed()) led.switch_colors(green_bt.get_color());  
-  delay(150);  
+  if (red_bt.is_pressed()) {
+    if (red_bt.is_enabled()) {
+      led.switch_colors(red_bt.get_color());
+      ColorButton::disable_all();
+    }  
+  }
+  else if (orange_bt.is_pressed()) {
+    if (orange_bt.is_enabled()) {
+      led.switch_colors(orange_bt.get_color());
+      ColorButton::disable_all();
+    }
+  }
+  else if (yellow_bt.is_pressed()) {
+    if (yellow_bt.is_enabled()) {
+      led.switch_colors(yellow_bt.get_color());
+      ColorButton::disable_all();
+    }
+  }
+  else if (green_bt.is_pressed()) {
+    if (green_bt.is_enabled()) {
+      led.switch_colors(green_bt.get_color());  
+      ColorButton::disable_all();
+    }
+  }
+  else {
+    ColorButton::enable_all();
+  }
+  delay(10);  
 }
