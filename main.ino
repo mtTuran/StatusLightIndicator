@@ -1,3 +1,4 @@
+#include <Ticker.h>
 #include <SPI.h>
 #include <Wire.h>
 #include <Adafruit_GFX.h>
@@ -14,6 +15,10 @@ void IRAM_ATTR read_increment_encoder_ISR();
 void choice_encoder_loop();
 void increment_encoder_loop();
 void color_selection_service();
+void start_cancel_pressed();
+void start_countdown();
+void finish_countdown();
+void countdown();
 
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
@@ -32,6 +37,7 @@ void color_selection_service();
 
 long hours = 0;
 long minutes = 0;
+byte seconds = 0;
 long incrementer_selection = 1;
 String timer_str;
 
@@ -53,9 +59,12 @@ ColorButton green_bt(25, GREEN);
 AiEsp32RotaryEncoder choice_encoder = AiEsp32RotaryEncoder(CHOICE_ENCODER_A_PIN, CHOICE_ENCODER_B_PIN, ROTARY_ENCODER_BUTTON_PIN, ROTARY_ENCODER_VCC_PIN, ROTARY_ENCODER_STEPS);
 AiEsp32RotaryEncoder increment_encoder = AiEsp32RotaryEncoder(INCREMENT_ENCODER_A_PIN, INCREMENT_ENCODER_B_PIN, ROTARY_ENCODER_BUTTON_PIN, ROTARY_ENCODER_VCC_PIN, ROTARY_ENCODER_STEPS);
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+Ticker periodic_ticker;
 
 //************************************** (main) setup - loop **************************************
 void setup() {
+  Serial.begin(115200);
+
   led.init_pins();
   led.off();
 
@@ -75,8 +84,6 @@ void setup() {
 	increment_encoder.setBoundaries(0, 59, true);
   increment_encoder.disableAcceleration();
   increment_encoder.setEncoderValue(minutes);
-
-  Serial.begin(115200);
 
   // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
   if(!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
@@ -195,3 +202,52 @@ void color_selection_service() {
     ColorButton::enable_all();
   }
 }
+
+void start_cancel_pressed() {
+  
+}
+
+void start_countdown() {
+  if (hours > 0 || minutes > 0) {
+    ColorButton::disable_all();
+    choice_encoder.disable();
+    increment_encoder.disable();
+    periodic_ticker.attach(1, countdown);
+  }
+}
+
+void finish_countdown() {
+  periodic_ticker.detach();
+  ColorButton::enable_all();
+  hours = 0;
+  minutes = 0;
+  seconds = 0;
+  timer_str = (hours < 10 ? "0" : "") + String(hours) + ":" + (minutes < 10 ? "0" : "") + String(minutes);
+  display_timer(timer_str);
+  display_selector();
+  display.display();
+}
+
+void countdown() {
+  if (seconds > 0) seconds = seconds - 1;
+
+  else if (minutes > 0) {
+    minutes = minutes - 1;
+    seconds = 59;
+  }
+
+  else if (hours > 0) {
+    minutes = 59;
+    seconds = 59;
+    hours = hours - 1;
+  }
+
+  else {
+    finish_countdown();
+  }
+
+  timer_str = (hours < 10 ? "0" : "") + String(hours) + ":" + (minutes < 10 ? "0" : "") + String(minutes) + (seconds < 10 ? "0" : "") + String(seconds);
+  display_timer(timer_str);
+  display.display();
+}
+
