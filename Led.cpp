@@ -37,3 +37,8 @@ void Led::switch_colors(Color color) {
     write_led();
   }
 }
+
+bool Led::is_lit() {
+  if (this->curr_color.red_scale != 0 || this->curr_color.green_scale != 0 || this->curr_color.blue_scale != 0) return true;
+  else return false;
+}

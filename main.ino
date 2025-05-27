@@ -7,6 +7,7 @@
 #include "Color.h"
 #include "Led.h"
 #include "ColorButton.h"
+#include "SimpleButton.h"
 
 void display_timer(const String &buf, int x, int y);
 void display_selector();
@@ -40,6 +41,7 @@ long minutes = 0;
 byte seconds = 0;
 long incrementer_selection = 1;
 String timer_str;
+bool timer_in_progress = false;
 
 const Color RED = {255, 0, 0};
 const Color ORANGE = {230, 200, 0};
@@ -56,6 +58,7 @@ ColorButton red_bt(18, RED);
 ColorButton orange_bt(32, ORANGE);
 ColorButton yellow_bt(33, YELLOW);
 ColorButton green_bt(25, GREEN);
+SimpleButton start_cancel_button(0);
 AiEsp32RotaryEncoder choice_encoder = AiEsp32RotaryEncoder(CHOICE_ENCODER_A_PIN, CHOICE_ENCODER_B_PIN, ROTARY_ENCODER_BUTTON_PIN, ROTARY_ENCODER_VCC_PIN, ROTARY_ENCODER_STEPS);
 AiEsp32RotaryEncoder increment_encoder = AiEsp32RotaryEncoder(INCREMENT_ENCODER_A_PIN, INCREMENT_ENCODER_B_PIN, ROTARY_ENCODER_BUTTON_PIN, ROTARY_ENCODER_VCC_PIN, ROTARY_ENCODER_STEPS);
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
@@ -72,6 +75,7 @@ void setup() {
   orange_bt.init_pin();
   yellow_bt.init_pin();
   green_bt.init_pin();
+  start_cancel_button.init_pin();
 
   choice_encoder.begin();
 	choice_encoder.setup(read_choice_encoder_ISR);
@@ -106,6 +110,7 @@ void loop() {
   color_selection_service();
   choice_encoder_loop();
   increment_encoder_loop();
+  start_cancel_service();
   delay(10);  
 }
 
@@ -113,7 +118,7 @@ void loop() {
 void display_timer(const String &buf) {
     int16_t x1, y1;
     uint16_t w, h;
-    display.getTextBounds(buf, TIMER_CURSOR_X, TIMER_CURSOR_Y, &x1, &y1, &w, &h); //calc width and height of new string
+    display.getTextBounds(buf, 0, 0, &x1, &y1, &w, &h); //calc width and height of new string
     display.setCursor(TIMER_CURSOR_X - (w / 2), TIMER_CURSOR_Y - (h / 2));
     display.print(buf);
 }
@@ -198,17 +203,25 @@ void color_selection_service() {
       ColorButton::disable_all();
     }
   }
-  else {
+  else if (!timer_in_progress) {
     ColorButton::enable_all();
   }
 }
 
-void start_cancel_pressed() {
-  
+void start_cancel_service() {
+  if (start_cancel_button.is_pressed()) {
+    if (start_cancel_button.is_enabled() && !timer_in_progress && led.is_lit()) start_countdown();
+    else if (start_cancel_button.is_enabled() && timer_in_progress) finish_countdown();
+    start_cancel_button.disable();
+  }
+  else {
+    start_cancel_button.enable();
+  }
 }
 
 void start_countdown() {
   if (hours > 0 || minutes > 0) {
+    timer_in_progress = true;
     ColorButton::disable_all();
     choice_encoder.disable();
     increment_encoder.disable();
@@ -218,11 +231,20 @@ void start_countdown() {
 
 void finish_countdown() {
   periodic_ticker.detach();
+  timer_in_progress = false;
   ColorButton::enable_all();
   hours = 0;
   minutes = 0;
   seconds = 0;
+  incrementer_selection = 1;
+  choice_encoder.enable();
+  increment_encoder.enable();
+  choice_encoder.setEncoderValue(incrementer_selection);
+  increment_encoder.setBoundaries(0, 59, true);
+  increment_encoder.setEncoderValue(minutes);
+  led.off();
   timer_str = (hours < 10 ? "0" : "") + String(hours) + ":" + (minutes < 10 ? "0" : "") + String(minutes);
+  display.clearDisplay();
   display_timer(timer_str);
   display_selector();
   display.display();
@@ -244,9 +266,11 @@ void countdown() {
 
   else {
     finish_countdown();
+    return;
   }
 
-  timer_str = (hours < 10 ? "0" : "") + String(hours) + ":" + (minutes < 10 ? "0" : "") + String(minutes) + (seconds < 10 ? "0" : "") + String(seconds);
+  timer_str = (hours < 10 ? "0" : "") + String(hours) + ":" + (minutes < 10 ? "0" : "") + String(minutes) + ":" + (seconds < 10 ? "0" : "") + String(seconds);
+  display.clearDisplay();
   display_timer(timer_str);
   display.display();
 }

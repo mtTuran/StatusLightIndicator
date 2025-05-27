@@ -21,6 +21,8 @@ class Led {
     void off();
 
     void switch_colors(Color color);
+
+    bool is_lit();
 };
 
 #endif
