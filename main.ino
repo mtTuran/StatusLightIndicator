@@ -36,10 +36,10 @@ void countdown();
 #define ROTARY_ENCODER_VCC_PIN -1
 #define ROTARY_ENCODER_STEPS 4
 
-long hours = 0;
-long minutes = 0;
+byte hours = 0;
+byte minutes = 0;
 byte seconds = 0;
-long incrementer_selection = 1;
+byte incrementer_selection = 1;
 String timer_str;
 bool timer_in_progress = false;
 
@@ -95,7 +95,6 @@ void setup() {
     for(;;); // Don't proceed, loop forever
   }
   else {
-    display.clearDisplay();
     display.setTextSize(2);
     display.setTextColor(WHITE);
     timer_str = (hours < 10 ? "0" : "") + String(hours) + ":" + (minutes < 10 ? "0" : "") + String(minutes);
